@@ -7,19 +7,15 @@ from Algorithme.binary_dpso_with_memory import binary_dpso_with_memory
 from Algorithme.genetic_algorithm import genetic_algorithm
 from Algorithme.genetic_algorithm_with_local_search import genetic_algorithm_with_local_search
 from Algorithme.particle_swarm_optimization_binary_condition import particle_swarm_optimization_binary_condition
-from Algorithme.hybrid_quantum_inspired_optimization import hybrid_quantum_inspired_optimization
 import pandas as pd  # Ajout de pandas pour manipuler les données
 
-# Paramètres globaux
-N = 30
-
-# Configuration de la page Streamlit
+N=30
+# Streamlit App
 st.set_page_config(
     page_title="Heuristic Optimization Algorithms",
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
 st.title("Heuristic Optimization Algorithms 🔍")
 st.markdown(
     """
@@ -27,14 +23,14 @@ st.markdown(
     """
 )
 
-# Barre latérale pour les paramètres
+# Sidebar for Parameters
 st.sidebar.header("Algorithm Parameters ⚙️")
 Tmax = st.sidebar.number_input("Maximum Iterations (Tmax)", min_value=1, value=1000, help="The maximum number of iterations.")
 step = st.sidebar.number_input("Step Size", min_value=1, value=25, help="The step size between iterations.")
 test_runs = st.sidebar.number_input("Number of Test Runs", min_value=1, value=30, help="The number of times each algorithm will run.")
 st.sidebar.markdown("---")
 
-# Sélection du problème
+# Main UI
 st.header("Problem Selection 🎯")
 func, D = select_problem()
 if func is None or D is None:
@@ -43,7 +39,7 @@ if func is None or D is None:
 else:
     st.success(f"✅ Problem selected successfully with dimension: **{D}**")
 
-# Bouton pour lancer les algorithmes
+# Run Algorithms Button
 if st.button("Run Optimization 🚀"):
     st.write("### Running Algorithms...")
     progress = st.progress(0)
@@ -88,17 +84,15 @@ if st.button("Run Optimization 🚀"):
 
         # BDPSO-M
         st.write("#### Binary DPSO with Memory (BDPSO-M)")
-        BDPSO_M_results = [binary_dpso_with_memory(func, N, D, Tmax, step) for _ in range(test_runs)]
+        BDPSO_M_results = [binary_dpso_with_memory(func,N, D, Tmax, step) for _ in range(test_runs)]
         BDPSO_M_best = [max(run) for run in BDPSO_M_results]
         results_summary["BDPSO-M"] = {"Best": max(BDPSO_M_best), "Mean": np.mean(BDPSO_M_best), "StdDev": np.std(BDPSO_M_best)}
         st.write(f"✅ Best Solution: {max(BDPSO_M_best):.5f}, Mean: {np.mean(BDPSO_M_best):.5f}, StdDev: {np.std(BDPSO_M_best):.5f}")
         update_progress(100)
 
-       
-
         st.success("🎉 All algorithms executed successfully!")
 
-        # Enregistrer les résultats
+    # Sauvegarde des résultats
         with open("results.txt", "w") as f:
             f.write("PSO Results:\n")
             for run in pso_results:
@@ -115,11 +109,43 @@ if st.button("Run Optimization 🚀"):
             f.write("\nBDPSO-M Results:\n")
             for run in BDPSO_M_results:
                 f.write(" ".join(map(str, run)) + "\n")
+        st.write("📄 Results saved to results.txt.")
+
         
+        try:
+            with open("results.txt", "r") as f:
+                lines = f.readlines()
 
-        st.write("📄 Results saved to `results.txt`.")
+    # Initialisation des variables pour le traitement
+            data = []
+            current_algorithm = None
 
-        # Graphe de comparaison
+    # Parcourir les lignes du fichier
+            for line in lines:
+                line = line.strip()
+                if line.endswith("Results:"):
+                    current_algorithm = line.replace(" Results:", "")
+                elif line and current_algorithm:
+                    values = list(map(float, line.split()))
+                    data.append({"Algorithm": current_algorithm, "Values": values})
+
+    # Convertir les données en DataFrame
+            df = pd.DataFrame(data)
+            df_values_expanded = df['Values'].apply(pd.Series)
+            df_values_expanded.columns = [f"Value_{i+1}" for i in range(df_values_expanded.shape[1])]
+
+            # Combinaison du DataFrame 'Algorithm' avec les colonnes étendues
+            df_improved = pd.concat([df['Algorithm'], df_values_expanded], axis=1)
+
+            # Affichage dans Streamlit avec st.dataframe
+            st.write("### Résultats améliorés 📊")
+            st.dataframe(df_improved)
+           
+
+        except Exception as e:
+                st.error(f"An error occurred while reading the results file: {str(e)}")
+
+        # Plot Results
         st.write("### Results Comparison 📊")
         plt.figure(figsize=(10, 6))
         plt.plot(range(step, Tmax + 1, step), np.mean(pso_results, axis=0), label='PSO', marker='o')
