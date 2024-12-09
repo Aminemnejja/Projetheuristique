@@ -3,7 +3,6 @@ from objective_functionnalities.mkp_functionnalities import sigmoid
 N = 30
 
 
-
 def particle_swarm_optimization_binary_condition(func, D, Tmax, step):
     positions = np.random.randint(2, size=(N, D))
     velocities = np.random.uniform(-6, 6, (N, D))

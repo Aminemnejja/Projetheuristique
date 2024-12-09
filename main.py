@@ -92,59 +92,55 @@ if st.button("Run Optimization 🚀"):
 
         st.success("🎉 All algorithms executed successfully!")
 
-    # Sauvegarde des résultats
-        with open("results.txt", "w") as f:
-            f.write("PSO Results:\n")
-            for run in pso_results:
-                f.write(" ".join(map(str, run)) + "\n")
-            f.write("\nPSO_C Results:\n")
-            for run in pso_c_results:
-                f.write(" ".join(map(str, run)) + "\n")
-            f.write("\nGA Results:\n")
-            for run in ga_results:
-                f.write(" ".join(map(str, run)) + "\n")
-            f.write("\nGA_LS Results:\n")
-            for run in gas_results:
-                f.write(" ".join(map(str, run)) + "\n")
-            f.write("\nBDPSO-M Results:\n")
-            for run in BDPSO_M_results:
-                f.write(" ".join(map(str, run)) + "\n")
-        st.write("📄 Results saved to results.txt.")
+        # Sauvegarder les résultats pour chaque algorithme dans des fichiers séparés
+        algorithms_results = {
+            "PSO": pso_results,
+            "PSO_C": pso_c_results,
+            "GA": ga_results,
+            "GA_LS": gas_results,
+            "BDPSO_M": BDPSO_M_results,
+        }
 
-        
+        for algo_name, results in algorithms_results.items():
+            file_name = f"resultat_{algo_name}.txt"
+            with open(file_name, "w") as f:
+                f.write(f"{algo_name} Results:\n")
+                for run in results:
+                    f.write(" ".join(map(str, run)) + "\n")
+            st.write(f"📄 Results saved to {file_name}.")
+
         try:
-            with open("results.txt", "r") as f:
-                lines = f.readlines()
-
-    # Initialisation des variables pour le traitement
-            data = []
-            current_algorithm = None
-
-    # Parcourir les lignes du fichier
-            for line in lines:
-                line = line.strip()
-                if line.endswith("Results:"):
-                    current_algorithm = line.replace(" Results:", "")
-                elif line and current_algorithm:
-                    values = list(map(float, line.split()))
-                    data.append({"Algorithm": current_algorithm, "Values": values})
-
-    # Convertir les données en DataFrame
-            df = pd.DataFrame(data)
-            df_values_expanded = df['Values'].apply(pd.Series)
-            df_values_expanded.columns = [f"Value_{i+1}" for i in range(df_values_expanded.shape[1])]
-
-            # Combinaison du DataFrame 'Algorithm' avec les colonnes étendues
-            df_improved = pd.concat([df['Algorithm'], df_values_expanded], axis=1)
-
-            # Affichage dans Streamlit avec st.dataframe
-            st.write("### Résultats améliorés 📊")
-            st.dataframe(df_improved)
-           
-
+            # Lire et afficher les résultats de chaque fichier
+            st.write("### Enhanced Results 📊")
+            
+            for algo_name in algorithms_results.keys():
+                file_name = f"resultat_{algo_name}.txt"
+                with open(file_name, "r") as f:
+                    lines = f.readlines()
+                
+                # Traitement des données
+                data = []
+                current_algorithm = None
+                for line in lines:
+                    line = line.strip()
+                    if line.endswith("Results:"):
+                        current_algorithm = line.replace(" Results:", "")
+                    elif line and current_algorithm:
+                        values = list(map(float, line.split()))
+                        data.append({"Algorithm": current_algorithm, "Values": values})
+                
+                # Convertir les données en DataFrame
+                df = pd.DataFrame(data)
+                df_values_expanded = df['Values'].apply(pd.Series)
+                df_values_expanded.columns = [f"Value_{i+1}" for i in range(df_values_expanded.shape[1])]
+                df_improved = pd.concat([df['Algorithm'], df_values_expanded], axis=1)
+                
+                # Afficher les résultats avec le style
+                st.subheader(f"Results for {algo_name}")
+                st.dataframe(df_improved.drop('Algorithm', axis=1))
+                
         except Exception as e:
-                st.error(f"An error occurred while reading the results file: {str(e)}")
-
+            st.error(f"An error occurred: {str(e)}")
         # Plot Results
         st.write("### Results Comparison 📊")
         plt.figure(figsize=(10, 6))
