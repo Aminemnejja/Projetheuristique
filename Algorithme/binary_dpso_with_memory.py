@@ -1,17 +1,20 @@
 import numpy as np
 from objective_functionnalities.mkp_functionnalities import sigmoid
 
-def binary_dpso_with_memory(func, N, D, Tmax, step, memory_size=50):
+def binary_dpso_with_memory(func, N, D, Tmax, step, memory_size=50, mutation_rate=0.1, reset_threshold=0.95):
     """
-    Binary DPSO avec mémoire.
+    Binary DPSO avec mémoire améliorée et fonctionnalités innovantes.
     - func : fonction objective à minimiser.
     - N : nombre de particules.
     - D : dimension de chaque solution.
     - Tmax : nombre d'itérations maximales.
     - step : fréquence de sauvegarde des résultats.
     - memory_size : taille maximale de la mémoire.
-    """
-    # Définir les coefficients en fonction de la dimension
+    - mutation_rate : taux de mutation pour l'exploration guidée.
+    - reset_threshold : seuil de convergence pour réinjection de diversité.
+
+"""
+ # Définir les coefficients en fonction de la dimension
     if D == 28:  # Petite dimension
         cognitive_coeff = 3.30
         social_coeff = 3.30
@@ -21,7 +24,6 @@ def binary_dpso_with_memory(func, N, D, Tmax, step, memory_size=50):
     else:  # Grande dimension
         cognitive_coeff = 12
         social_coeff = 12
-
     # Initialisation
     positions = np.random.randint(2, size=(N, D))  # Solutions initiales binaires
     velocities = np.random.uniform(-4, 4, (N, D))  # Vitesses initiales
@@ -35,7 +37,6 @@ def binary_dpso_with_memory(func, N, D, Tmax, step, memory_size=50):
     memory = []  # Mémoire pour stocker les positions explorées
     results = []
 
-    # Fonctions auxiliaires
     def add_to_memory(position):
         """Ajoute une solution dans la mémoire avec gestion de la taille."""
         memory.append(position.copy())
@@ -44,10 +45,22 @@ def binary_dpso_with_memory(func, N, D, Tmax, step, memory_size=50):
 
     def is_in_memory(position):
         """Vérifie si une position est déjà dans la mémoire."""
-        for mem_pos in memory:
-            if np.array_equal(position, mem_pos):  # Comparaison élément par élément
-                return True
-        return False
+        return any(np.array_equal(position, mem_pos) for mem_pos in memory)
+
+    def mutate(position, rate=mutation_rate):
+        """Applique une mutation sur une solution."""
+        mutation_mask = np.random.rand(D) < rate
+        position[mutation_mask] = 1 - position[mutation_mask]
+        return position
+
+    def reset_positions():
+        """Réinitialise une partie de la population pour éviter la stagnation."""
+        for i in range(N // 2):  # Réinitialise 50% des particules
+            new_position = np.random.randint(2, size=D)
+            while is_in_memory(new_position):
+                new_position = np.random.randint(2, size=D)
+            positions[i] = new_position
+            add_to_memory(new_position)
 
     # Boucle principale
     for iteration in range(Tmax):
@@ -64,6 +77,11 @@ def binary_dpso_with_memory(func, N, D, Tmax, step, memory_size=50):
         probabilities = sigmoid(velocities)
         random_values = np.random.uniform(size=(N, D))
         positions = (probabilities >= random_values).astype(int)
+
+        # Mutation guidée
+        for i in range(N):
+            if np.random.rand() < mutation_rate:  # Applique une mutation
+                positions[i] = mutate(positions[i])
 
         # Évaluation des nouvelles solutions
         costs = np.array([func(pos) for pos in positions])
@@ -82,14 +100,9 @@ def binary_dpso_with_memory(func, N, D, Tmax, step, memory_size=50):
         # Ajout de la meilleure solution globale dans la mémoire
         add_to_memory(global_best_position)
 
-        # Exploration avec évitement des doublons
-        for i in range(N):
-            if np.random.rand() < 0.2:  # 20% de chance d'exploration
-                new_position = np.random.randint(2, size=D)
-                while is_in_memory(new_position):  # Vérifie si déjà visité
-                    new_position = np.random.randint(2, size=D)
-                positions[i] = new_position
-                add_to_memory(new_position)  # Ajoute la nouvelle position validée à la mémoire
+        # Réinjection de diversité si nécessaire
+        if np.mean(personal_best_costs) / global_best_cost > reset_threshold:
+            reset_positions()
 
         # Sauvegarde des résultats périodiquement
         if (iteration + 1) % step == 0:
